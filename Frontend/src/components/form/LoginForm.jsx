@@ -1,7 +1,6 @@
 import { useState } from "react";
 import PropTypes from "prop-types";
 import { useNavigate } from "react-router-dom";
-import users from "../../Data/Users";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEye, faEyeSlash } from "@fortawesome/free-solid-svg-icons";
 
@@ -10,19 +9,35 @@ const LoginForm = ({ onSignUp }) => {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
+    setError("");
+    setLoading(true);
 
-    // Find user in the users array
-    const user = users.find((user) => user.email === email && user.password === password);
+    try {
+      const response = await fetch("http://localhost:3000/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password }),
+      });
 
-    if (user) {
-      localStorage.setItem("loggedInUser", JSON.stringify(user)); // Store user in localStorage
-      navigate("/account"); // Redirect to account page
-    } else {
-      setError("Invalid email or password!");
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Login failed!");
+      }
+
+      sessionStorage.setItem("loggedInUser", JSON.stringify(data.user));
+      navigate("/account");
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -57,7 +72,7 @@ const LoginForm = ({ onSignUp }) => {
           />
           <span
             className="absolute inset-y-0 end-0 grid place-content-center px-6 cursor-pointer"
-            onClick={() => setShowPassword((prev) => !prev)} // Toggle function is used correctly
+            onClick={() => setShowPassword((prev) => !prev)}
           >
             {showPassword ? (
               <FontAwesomeIcon icon={faEyeSlash} className="text-gray-400 size-4" />
@@ -77,9 +92,12 @@ const LoginForm = ({ onSignUp }) => {
 
           <button
             type="submit"
-            className="inline-block shrink-0 rounded-md border border-primary bg-primary px-12 py-3 text-sm font-medium text-white transition hover:bg-transparent hover:text-primary cursor-pointer"
+            disabled={loading}
+            className={`inline-block shrink-0 rounded-md border border-primary bg-primary px-12 py-3 text-sm font-medium text-white transition ${
+              loading ? "opacity-50 cursor-not-allowed" : "hover:bg-transparent hover:text-primary cursor-pointer"
+            }`}
           >
-            Sign in
+            {loading ? "Signing in..." : "Sign in"}
           </button>
         </div>
       </form>
